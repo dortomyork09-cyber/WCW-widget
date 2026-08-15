@@ -2,6 +2,7 @@ const { app, BrowserWindow, screen, ipcMain, Tray, Menu } = require('electron')
 const { exec } = require('child_process')
 const path = require('path')
 const https = require('https')
+const { pathToFileURL } = require('url')
 
 let win = null
 let tray = null
@@ -140,7 +141,10 @@ function createWindow() {
 
     runPowerShell(
       mediaPath,
-      [],
+      [
+        '-outDir',
+        app.getPath('userData')
+      ],
       (err, stdout, stderr) => {
         mediaBusy = false
 
@@ -221,9 +225,19 @@ function createWindow() {
         data.hasThumbnail =
           Boolean(data.hasThumbnail)
 
-        data.thumbPath =
+        // media.ps1이 돌려주는 thumbPath는 "C:\Users\...\thumb.jpg" 같은
+        // 일반 OS 경로라서, 렌더러의 <img src>에 그대로 넣으면 유효한 URL이
+        // 아니라서 로드가 안 된다(항상 file:// URI로 바꿔줘야 브라우저가 읽는다).
+        const rawThumbPath =
           data.thumbPath ||
-          'C:\\WCW\\thumb.jpg'
+          path.join(app.getPath('userData'), 'thumb.jpg')
+
+        try {
+          data.thumbPath = pathToFileURL(rawThumbPath).href
+        } catch (_) {
+          data.hasThumbnail = false
+          data.thumbPath = ''
+        }
 
         // index.html로 전달
         win.webContents.send(

@@ -1,3 +1,7 @@
+param(
+    [string]$outDir = ''
+)
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -66,8 +70,12 @@ try {
         }
     }
 
-    # WCW 폴더
-    $wcwDir = "C:\WCW"
+    # 앨범아트 저장 폴더
+    # C:\WCW 처럼 드라이브 루트에 하드코딩하면 관리자 권한이 없는 컴퓨터(대부분의
+    # 일반 사용자 계정)에서는 폴더 생성이 거부되어 음악 위젯이 통째로 동작하지 않는다.
+    # 항상 쓰기 권한이 보장되는 Electron의 사용자 데이터 폴더를 우선 사용하고,
+    # 혹시 전달되지 않았을 경우에만 임시 폴더로 대체한다.
+    $wcwDir = if ($outDir) { $outDir } else { $env:TEMP }
 
     if (-not (Test-Path $wcwDir)) {
         New-Item `

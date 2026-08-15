@@ -1279,7 +1279,7 @@ function initMusic(w){
     const b=g('.npb');if(b){b.textContent='● 실시간';b.style.color='var(--ac)'}
     if(d.hasThumbnail&&d.title!==lt){
       lt=d.title
-      const t=(d.thumbPath||'file:///C:/WCW/thumb.jpg')+'?t='+Date.now()
+      const t=(d.thumbPath||'')+'?t='+Date.now()
       const mk=()=>{const i=document.createElement('img');i.src=t;i.style.cssText='width:100%;height:100%;object-fit:cover';i.onerror=function(){this.parentElement.innerHTML=icHTML('i-music')};return i}
       if(g('.music-album')){g('.music-album').innerHTML='';g('.music-album').appendChild(mk())}
       if(g('.music-thumb')){g('.music-thumb').innerHTML='';g('.music-thumb').appendChild(mk())}
@@ -2571,12 +2571,9 @@ function initSnake(w){
 
 // ===== 스포츠 통합 위젯 =====
 // 날짜 선택 없이, 최근 경기 + 앞으로 예정된 경기들을 최대한 많이 표시한다.
-// ESPN: NBA/MLB/NFL/NHL/EPL/라리가/세리에A/분데스/챔스/K리그1
-// KBO: 한국 일정 API 우선 + TheSportsDB fallback
+// ESPN: NBA/MLB/NFL/NHL/EPL/라리가/세리에A/분데스/챔스
 const SPORTS_LIST=[
   {id:'nba',name:'NBA',kind:'espn',api:'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard',search:'NBA 경기 일정'},
-  {id:'kbo',name:'KBO',kind:'tsdb',leagueId:'4830',search:'KBO 야구 경기 일정'},
-  {id:'kleague1',name:'K리그1',kind:'espn',api:'https://site.api.espn.com/apis/site/v2/sports/soccer/kor.1/scoreboard',search:'K리그1 경기 일정'},
   {id:'mlb',name:'MLB',kind:'espn',api:'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',search:'MLB 경기 일정'},
   {id:'nfl',name:'NFL',kind:'espn',api:'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',search:'NFL 경기 일정'},
   {id:'nhl',name:'NHL',kind:'espn',api:'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard',search:'NHL 경기 일정'},
@@ -2639,27 +2636,10 @@ function parseESPN(data){
   }catch(e){return[]}
 }
 
-function parseTSDB(data,leagueName){
-  const events=Array.isArray(data?.events)?data.events:[]
-  return events.map(ev=>{
-    const d=ev.dateEvent||'';if(!d)return null
-    const dt=new Date((ev.strTime?d+'T'+ev.strTime:d))
-    if(isNaN(dt))return null
-    const status=String(ev.strStatus||'')
-    const hs=ev.intHomeScore!==null&&ev.intHomeScore!==undefined&&ev.intHomeScore!==''?ev.intHomeScore:null
-    const as=ev.intAwayScore!==null&&ev.intAwayScore!==undefined&&ev.intAwayScore!==''?ev.intAwayScore:null
-    const done=hs!==null&&as!==null||/finished|final|ft|종료|완료/i.test(status)
-    const now=Date.now()
-    const inferredLive=!done && now>=dt.getTime() && now<=dt.getTime()+4*60*60*1000
-    const live=/live|in progress|경기중|진행/i.test(status) || inferredLive
-    return {home:ev.strHomeTeam||'?',away:ev.strAwayTeam||'?',homeLogo:ev.strHomeTeamBadge||'',awayLogo:ev.strAwayTeamBadge||'',homeAbbr:(ev.strHomeTeam||'?').slice(0,3),awayAbbr:(ev.strAwayTeam||'?').slice(0,3),homeRec:'',awayRec:'',hs,as,live,done,stTxt:done?'종료':live?'● 진행중':dt.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' '+dt.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),date:dt.toISOString(),league:leagueName||'',link:spGoogle((ev.strHomeTeam||'')+' vs '+(ev.strAwayTeam||'')+' '+(leagueName||'')+' 경기 일정')}
-  }).filter(Boolean)
-}
-
 async function fetchESPNRange(conf){
   // 현재 진행중/최근 경기 + 앞으로의 일정까지 넓게 수집한다.
   // NBA는 시즌 전에도 개막 일정이 잡히도록 180일 범위를 우선 사용한다.
-  const forward=conf.id==='nba' ? 180 : (conf.id==='kleague1' ? 120 : 60)
+  const forward=conf.id==='nba' ? 180 : 60
   const ranges=[
     spRange(3,forward),
     spRange(14,30),
@@ -2681,254 +2661,6 @@ async function fetchESPNRange(conf){
     }catch(e){}
   }
   return all
-}
-
-function parseDaumKBO(data){
-  const root=data?.result||data?.data||data
-  const arr=Array.isArray(root)?root:(root?.games||root?.gameList||root?.schedule||root?.list||[])
-  const out=[]
-  for(const ev of arr){
-    const home=ev.homeTeamName||ev.homeTeam?.name||ev.homeTeam?.teamName||ev.homeName||ev.homeTeam||''
-    const away=ev.awayTeamName||ev.awayTeam?.name||ev.awayTeam?.teamName||ev.awayName||ev.awayTeam||''
-    if(!home||!away)continue
-    // 주의: 이 정규식들은 실제 날짜 숫자(\d)와 점(.)을 매칭해야 한다.
-    // 예전 코드에는 \\d, \\. 처럼 역슬래시가 이중으로 들어가 있어서
-    // "숫자"가 아니라 "리터럴 백슬래시 문자"를 찾는 잘못된 정규식이 되어 있었다.
-    // 그 결과 다음이 항상 실패해서(dt=null) Daum 쪽 KBO 데이터가 전부 버려지고 있었다.
-    const dateRaw=String(ev.gameDate||ev.date||ev.startDate||ev.gameStartDate||'').replace(/\./g,'-')
-    const timeRaw=String(ev.gameTime||ev.time||ev.startTime||ev.startDateTime||'').match(/(\d{1,2}):(\d{2})/)
-    let dt=null
-    if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateRaw)){
-      dt=new Date(dateRaw+'T'+(timeRaw?timeRaw[0]:'18:30')+':00+09:00')
-    }else if(ev.gameDate && /^\d{8}$/.test(String(ev.gameDate))){
-      const s=String(ev.gameDate)
-      dt=new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)+'T'+(timeRaw?timeRaw[0]:'18:30')+':00+09:00')
-    }else if(ev.date){
-      const x=new Date(ev.date); if(!isNaN(x))dt=x
-    }
-    if(!dt||isNaN(dt))continue
-    const hs=ev.homeScore??ev.homeTeamScore??ev.homeScoreDisplay??null
-    const as=ev.awayScore??ev.awayTeamScore??ev.awayScoreDisplay??null
-    const status=String(ev.status||ev.gameStatus||ev.state||ev.gameState||'')
-    const done=/종료|경기종료|final|finished|complete/i.test(status) ||
-      (hs!==null&&as!==null&&ev.gameStatus!==undefined)
-    const now=Date.now()
-    const live=!done && (/진행|live|중|in.?progress/i.test(status) ||
-      (now>=dt.getTime() && now<=dt.getTime()+4*60*60*1000))
-    const logoOf=(team)=>{
-      const x=team==='LG'?'LG':team
-      return ''
-    }
-    const g={
-      home:String(home),away:String(away),
-      homeLogo:ev.homeTeamLogo||ev.homeLogo||ev.homeTeam?.logo||'',
-      awayLogo:ev.awayTeamLogo||ev.awayLogo||ev.awayTeam?.logo||'',
-      homeAbbr:String(home).slice(0,3),awayAbbr:String(away).slice(0,3),
-      homeRec:'',awayRec:'',
-      hs:hs!==null&&hs!==''&&!isNaN(Number(hs))?Number(hs):null,
-      as:as!==null&&as!==''&&!isNaN(Number(as))?Number(as):null,
-      live,done,
-      stTxt:done?'종료':live?'● 진행중':dt.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' '+dt.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
-      date:dt.toISOString(),league:'KBO'
-    }
-    g.link=spGoogleGame(g)
-    out.push(g)
-  }
-  return out
-}
-
-// 네이버 스포츠의 야구 일정 API(일자별) — KBO 실제 서비스에서 쓰는 데이터라
-// Daum/TheSportsDB보다 예정 경기가 훨씬 촘촘하게 채워져 있다.
-// 정확한 필드명이 바뀔 수 있어 최대한 여러 이름을 다 시도해서 방어적으로 파싱한다.
-function parseNaverKBO(data){
-  try{
-    const root=data?.result||data?.data||data
-    const arr=Array.isArray(root)?root
-      :Array.isArray(root?.games)?root.games
-      :Array.isArray(root?.gameList)?root.gameList
-      :Array.isArray(root?.list)?root.list
-      :Array.isArray(root?.content)?root.content
-      :Array.isArray(root?.page?.content)?root.page.content
-      :Array.isArray(data?.games)?data.games
-      :Array.isArray(data?.list)?data.list
-      :[]
-    const out=[]
-    for(const ev of arr){
-      // KBO가 아닌 다른 야구(고교야구, 국제대회 등)가 섞여 올 수 있어 카테고리를 한번 더 확인한다.
-      const cat=String(ev.categoryId||ev.leagueId||ev.category||'').toLowerCase()
-      if(cat && cat!=='kbo')continue
-
-      const home=ev.homeTeamName||ev.homeTeam?.name||ev.homeTeam?.teamName||ev.awayHomeName||ev.homeName||''
-      const away=ev.awayTeamName||ev.awayTeam?.name||ev.awayTeam?.teamName||ev.awayName||''
-      if(!home||!away)continue
-
-      let dt=null
-      const rawDt=ev.gameDateTime||ev.gameDate||ev.startDateTime||ev.gameStartDate||''
-      if(rawDt){
-        const x=new Date(rawDt)
-        if(!isNaN(x))dt=x
-      }
-      if(!dt){
-        const d=String(ev.gameDate||ev.date||'').replace(/\./g,'-')
-        const t=String(ev.gameTime||ev.time||'').match(/(\d{1,2}):(\d{2})/)
-        if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(d)){
-          dt=new Date(d+'T'+(t?t[0]:'18:30')+':00+09:00')
-        }else if(/^\d{8}$/.test(String(ev.gameDate||''))){
-          const s=String(ev.gameDate)
-          dt=new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)+'T'+(t?t[0]:'18:30')+':00+09:00')
-        }
-      }
-      if(!dt||isNaN(dt))continue
-
-      const hs=ev.homeTeamScore??ev.homeScore??ev.homeTeamScoreDisplay??null
-      const as=ev.awayTeamScore??ev.awayScore??ev.awayTeamScoreDisplay??null
-      const statusCode=String(ev.statusCode||ev.status||ev.gameState||'').toUpperCase()
-      const statusText=String(ev.statusInfo||ev.gameStatusText||ev.status||'')
-      const done=/END|RESULT|종료|경기종료|FINAL/i.test(statusCode+statusText)
-      const now=Date.now()
-      const live=!done && (/LIVE|IN_?PROGRESS|진행|중계/i.test(statusCode+statusText) ||
-        (now>=dt.getTime() && now<=dt.getTime()+4*60*60*1000))
-
-      const g={
-        home:String(home),away:String(away),
-        homeLogo:ev.homeTeamEmblemUrl||ev.homeTeam?.emblemUrl||'',
-        awayLogo:ev.awayTeamEmblemUrl||ev.awayTeam?.emblemUrl||'',
-        homeAbbr:String(home).slice(0,3),awayAbbr:String(away).slice(0,3),
-        homeRec:'',awayRec:'',
-        hs:hs!==null&&hs!==''&&!isNaN(Number(hs))?Number(hs):null,
-        as:as!==null&&as!==''&&!isNaN(Number(as))?Number(as):null,
-        live,done,
-        stTxt:done?'종료':live?'● 진행중':dt.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'})+' '+dt.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
-        date:dt.toISOString(),league:'KBO'
-      }
-      g.link=spGoogleGame(g)
-      out.push(g)
-    }
-    return out
-  }catch(e){return[]}
-}
-
-function kboDateRange(daysBack,daysForward,sep){
-  const today=new Date();today.setHours(0,0,0,0)
-  const dates=[]
-  for(let i=-daysBack;i<=daysForward;i++){
-    const d=new Date(today);d.setDate(d.getDate()+i)
-    const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0')
-    dates.push(sep?`${y}${sep}${m}${sep}${day}`:`${y}${m}${day}`)
-  }
-  return dates
-}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
-
-// 일자별로 나눠서 요청하는 API 두 개(네이버·Daum)를 한 번에 너무 많이 몰아서 보내면
-// 상대 서버에서 IP 단위로 차단/거절해버려 오히려 대부분 실패하는 역효과가 날 수 있다.
-// 그래서 배치 크기를 줄이고 배치 사이에 짧게 쉬어가며 순차적으로 모은다.
-async function fetchByDate(dates,batchSize,gapMs,urlFor,parse){
-  const out=[],seen=new Set()
-  for(let i=0;i<dates.length;i+=batchSize){
-    const batch=dates.slice(i,i+batchSize)
-    const rows=await Promise.all(batch.map(async date=>{
-      try{
-        const raw=await ipcRenderer.invoke('fetch-url',urlFor(date))
-        return raw?parse(JSON.parse(raw)):[]
-      }catch(e){return[]}
-    }))
-    rows.flat().forEach(g=>{
-      const key=g.home+'|'+g.away+'|'+g.date
-      if(!seen.has(key)){seen.add(key);out.push(g)}
-    })
-    if(i+batchSize<dates.length)await sleep(gapMs)
-  }
-  return out
-}
-
-async function fetchNaverKBO(){
-  // 실제 KBO 서비스가 쓰는 데이터라 예정 경기가 가장 촘촘하다.
-  // 1) 먼저 날짜 "범위"로 한 번에 요청한다(fromDate~toDate) — 네이버 스포츠 API는
-  //    올림픽 일정 등 다른 하위 API에서도 date 하나가 아니라 fromDate/toDate 범위 +
-  //    fields=all 방식을 쓰는 것으로 확인돼서, 야구 일정도 같은 규칙일 가능성이 높다.
-  const today=new Date();today.setHours(0,0,0,0)
-  const from=new Date(today);from.setDate(from.getDate()-10)
-  const to=new Date(today);to.setDate(to.getDate()+45)
-  const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
-  try{
-    const rangeUrl='https://api-gw.sports.naver.com/schedule/games?upperCategoryId=kbaseball&categoryId=kbo'
-      +'&fromDate='+fmt(from)+'&toDate='+fmt(to)+'&fields=all&page=1&pageSize=300&sort=dateAsc&korean=true'
-    const raw=await ipcRenderer.invoke('fetch-url',rangeUrl)
-    if(raw){
-      const games=parseNaverKBO(JSON.parse(raw))
-      if(games.length)return games
-    }
-  }catch(e){console.error('[WCW][KBO] 네이버 범위 조회 실패:',e)}
-
-  // 2) 범위 조회가 비어있으면(파라미터가 다를 수 있으니) 예전처럼 날짜별로 하나씩 물어본다.
-  const dates=kboDateRange(10,45,'-')
-  return fetchByDate(dates,6,150,
-    date=>'https://api-gw.sports.naver.com/schedule/games?upperCategoryId=kbaseball&categoryId=kbo&date='+date,
-    data=>parseNaverKBO(data))
-}
-
-async function fetchDaumKBO(){
-  // Daum은 라이브 점수·최근 결과 반영 용도라 가까운 날짜 위주로만 가져와서 요청 수를 아낀다.
-  const dates=kboDateRange(10,21,'')
-  return fetchByDate(dates,6,150,
-    date=>'https://sports.daum.net/prx/hermes/api/game/schedule.json?date='+date+'&leagueCode=KBO',
-    data=>parseDaumKBO(data))
-}
-
-// DevTools를 직접 열지 않아도 위젯 화면에서 바로 어느 출처가 안 되는지 볼 수 있도록
-// 마지막 조회 결과를 기록해둔다(스포츠 위젯 하단에 작게 표시된다).
-let KBO_LAST_DEBUG=''
-
-async function fetchKBO(){
-  // KBO는 여러 출처를 동시에 모아서 합친다. 한 출처가 막히거나(비공식 API 특성상
-  // 필드명이 바뀌거나 응답이 비는 경우가 흔하다) 예정 경기를 적게 주더라도,
-  // 다른 출처가 그 빈틈을 채워주도록 항상 3곳을 모두 시도한다.
-  //  - 네이버 스포츠(일자별): 실제 KBO 서비스에 쓰이는 데이터라 예정 경기가 가장 촘촘함
-  //  - Daum(일자별): 라이브 점수·최근 결과 반영이 빠름
-  //  - TheSportsDB: 위 두 곳이 실패했을 때의 최후 보강용(무료 API라 경기 수가 적음)
-  const out=[]
-  const seen=new Set()
-  const counts={naver:0,daum:0,tsdb:0}
-  function addAll(games,label,key){
-    let added=0
-    for(const g of games){
-      const k=g.home+'|'+g.away+'|'+g.date
-      if(!seen.has(k)){seen.add(k);out.push(g);added++}
-    }
-    counts[key]=(counts[key]||0)+games.length
-    console.log('[WCW][KBO] '+label+' → '+games.length+'경기 수신, 신규 '+added+'경기 추가')
-  }
-
-  try{
-    const naverGames=await fetchNaverKBO()
-    addAll(naverGames,'네이버 스포츠','naver')
-  }catch(e){console.error('[WCW][KBO] 네이버 스포츠 조회 실패:',e)}
-
-  try{
-    const daumGames=await fetchDaumKBO()
-    addAll(daumGames,'Daum','daum')
-  }catch(e){console.error('[WCW][KBO] Daum 조회 실패:',e)}
-
-  const year=new Date().getFullYear()
-  const urls=[
-    'https://www.thesportsdb.com/api/v1/json/123/eventsseason.php?id=4830&s='+year,
-    'https://www.thesportsdb.com/api/v1/json/3/eventsseason.php?id=4830&s='+year,
-    'https://www.thesportsdb.com/api/v1/json/123/eventsnextleague.php?id=4830',
-    'https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id=4830',
-    'https://www.thesportsdb.com/api/v1/json/123/eventspastleague.php?id=4830',
-    'https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=4830'
-  ]
-  for(const url of urls){
-    try{
-      const raw=await ipcRenderer.invoke('fetch-url',url)
-      if(!raw)continue
-      addAll(parseTSDB(JSON.parse(raw),'KBO'),'TheSportsDB','tsdb')
-    }catch(e){}
-  }
-  console.log('[WCW][KBO] 최종 합계: '+out.length+'경기')
-  KBO_LAST_DEBUG='네이버 '+counts.naver+' · Daum '+counts.daum+' · TSDB '+counts.tsdb+' · 합계 '+out.length
-  return out
 }
 
 function spRenderGame(it,g){
@@ -2954,7 +2686,6 @@ function spRenderGame(it,g){
 function initSports(w){
   const tabs=w.querySelector('.sp-tabs'),list=w.querySelector('.sp-list'),upd=w.querySelector('.sp-updated')
   let cur=localStorage.getItem('wcw-sports-league')||'nba',loading=false
-  let kboCache=null,kboCacheAt=0
   if(!SPORTS_LIST.some(x=>x.id===cur))cur='nba'
 
   SPORTS_LIST.forEach(sp=>{
@@ -2979,13 +2710,7 @@ function initSports(w){
 
     try{
       const conf=SPORTS_LIST.find(x=>x.id===cur)
-      let games
-      if(conf.id==='kbo' && kboCache && Date.now()-kboCacheAt<5*60*1000){
-        games=kboCache
-      }else{
-        games=conf.kind==='tsdb' ? await fetchKBO() : await fetchESPNRange(conf)
-        if(conf.id==='kbo'){kboCache=games;kboCacheAt=Date.now()}
-      }
+      let games=await fetchESPNRange(conf)
 
       const now=Date.now()
       games=games.filter(g=>g && g.date)
@@ -3007,10 +2732,9 @@ function initSports(w){
         .filter(g=>!g.live && !g.done && new Date(g.date).getTime()>=now)
         .sort((a,b)=>new Date(a.date)-new Date(b.date))
 
-      // 종료 경기는 최근 2개만, 예정 경기는 넉넉하게 보여준다. KBO는 하루 경기 수가
-      // 많아서 예정 경기를 특히 더 많이 보여준다.
+      // 종료 경기는 최근 2개만, 예정 경기는 넉넉하게 보여준다.
       const doneLimit=2
-      const futureLimit=(cur==='kbo')?60:20
+      const futureLimit=20
 
       const recent=games
         .filter(g=>g.done && new Date(g.date).getTime()<=now)
@@ -3054,11 +2778,7 @@ function initSports(w){
       }
 
       const timeTxt=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
-      // KBO는 어느 출처에서 몇 경기가 왔는지 화면에서 바로 볼 수 있게 같이 표시한다.
-      // (DevTools를 안 열어도 스크린샷 한 장으로 원인을 바로 확인할 수 있다)
-      upd.textContent = conf.id==='kbo'
-        ? '업데이트: '+timeTxt+' · '+KBO_LAST_DEBUG
-        : '업데이트: '+timeTxt
+      upd.textContent = '업데이트: '+timeTxt
     }catch(e){
       list.innerHTML=''
       const el=document.createElement('div')
