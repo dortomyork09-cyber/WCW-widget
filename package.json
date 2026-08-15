@@ -4,7 +4,7 @@
   "description": "A Web Connecting the World - 바탕화면 위젯",
   "main": "main.js",
   "author": "WCW",
-  "license": "ISC",
+  "license": "SEE LICENSE IN LICENSE.md",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win portable"
