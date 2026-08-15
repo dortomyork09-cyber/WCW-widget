@@ -208,29 +208,6 @@ body.theme-light .wopt,body.theme-ice .wopt{background:#ffffff80}
 .analog-wrap.show{display:flex}
 .clock-digital{display:flex;flex-direction:column;justify-content:center}
 
-/* ══ 음악 ══ */
-.music-album{width:100%;aspect-ratio:1;border-radius:9px;background:#10234080;display:none;align-items:center;justify-content:center;margin-bottom:10px;overflow:hidden;flex-shrink:0;border:1px solid var(--ibr)}
-.music-album img{width:100%;height:100%;object-fit:cover}
-.music-album.show{display:flex}
-.music-album .ic{width:34%;height:34%;color:var(--c3)}
-.music-row{display:flex;align-items:center;gap:10px}
-.music-thumb{border-radius:7px;background:#10234080;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1px solid var(--ibr)}
-.music-thumb img{width:100%;height:100%;object-fit:cover}
-.music-thumb .ic{width:52%;height:52%;color:var(--c3)}
-.music-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
-.music-artist{color:var(--sc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
-.music-prog{height:3px;background:var(--bg);border-radius:2px;margin-top:11px;cursor:pointer;flex-shrink:0;position:relative}
-.mf{height:100%;background:linear-gradient(90deg,var(--c3),var(--c5));border-radius:inherit;position:relative}
-.mf::after{content:'';position:absolute;right:-5px;top:50%;transform:translateY(-50%) scale(0);width:10px;height:10px;border-radius:50%;background:var(--c6);transition:transform .12s;box-shadow:0 0 8px #60a5fa80}
-.music-prog:hover .mf::after{transform:translateY(-50%) scale(1)}
-.music-times{display:flex;justify-content:space-between;color:var(--sc);margin-top:5px;flex-shrink:0;font-size:10px;font-family:var(--mono);opacity:.8}
-.music-ctrls{display:flex;align-items:center;gap:7px;margin-top:10px;flex-shrink:0}
-.mbtn{background:#10234066;border:1px solid var(--ibr);border-radius:7px;color:var(--wc);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;padding:0}
-.mbtn:hover{background:var(--n3);border-color:var(--c3)}
-.mbtn.play{background:var(--c3);border-color:var(--c3);color:#fff}
-.mbtn.play:hover{background:var(--c2)}
-.mbtn .ic{width:45%;height:45%}
-.mbtn.play .ic{width:42%;height:42%}
 .npb{font-size:9px;color:var(--c4);margin-left:auto;font-weight:600;letter-spacing:.06em}
 
 /* ══ 할일 ══ */
@@ -632,7 +609,6 @@ body.theme-light .wopt,body.theme-ice .wopt{background:#ffffff80}
 .cp-val{font-size:11.5px !important}
 .chart-in{font-size:12.5px !important}
 .chart-item,.snake-info{font-size:12px !important}
-.music-times{font-size:11.5px !important}
 .todo-list,.ti,.memo-in,.news-list,.exchange-row,.stock-row{font-size:14px !important}
 
 /* ── 스포츠 위젯: 실시간 정보가 한눈에 들어오도록 특히 크게 ── */
@@ -666,7 +642,6 @@ body.theme-light .wopt,body.theme-ice .wopt{background:#ffffff80}
 <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 14.5a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H10a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V10a1.6 1.6 0 001.5 1h.2a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></symbol>
 <symbol id="i-power" viewBox="0 0 24 24"><path d="M18.4 6.6a9 9 0 11-12.7 0M12 2v10"/></symbol>
 <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
-<symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
 <symbol id="i-check-sq" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></symbol>
 <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/></symbol>
@@ -688,10 +663,6 @@ body.theme-light .wopt,body.theme-ice .wopt{background:#ffffff80}
 <symbol id="i-bars" viewBox="0 0 24 24"><path d="M4 20V11M10 20V4M16 20V14M22 20H2"/></symbol>
 <symbol id="i-snake" viewBox="0 0 24 24"><path d="M4 8h6a3 3 0 010 6H8a3 3 0 000 6h9"/><circle cx="19" cy="7" r="2.5"/><path d="M4 8V6a2 2 0 012-2h11"/></symbol>
 <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v6a5 5 0 01-10 0z"/><path d="M17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3M12 15v4M9 21h6"/></symbol>
-<symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9z" fill="currentColor" stroke="none"/></symbol>
-<symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 3h4v18H7zM13 3h4v18h-4z" fill="currentColor" stroke="none"/></symbol>
-<symbol id="i-prev" viewBox="0 0 24 24"><path d="M18 4v16L7 12z" fill="currentColor" stroke="none"/><path d="M5 4v16" stroke-width="2.4"/></symbol>
-<symbol id="i-next" viewBox="0 0 24 24"><path d="M6 4v16l11-8z" fill="currentColor" stroke="none"/><path d="M19 4v16" stroke-width="2.4"/></symbol>
 <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M19 6a9 9 0 010 12"/></symbol>
 <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></symbol>
 <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></symbol>
@@ -753,7 +724,6 @@ body.theme-light .wopt,body.theme-ice .wopt{background:#ffffff80}
     <div class="mdl-s">기본</div>
     <div class="wgrid">
       <div class="wopt" onclick="addWidget('clock')"><svg class="ic"><use href="#i-clock"/></svg><div class="nm">시계</div></div>
-      <div class="wopt" onclick="addWidget('music')"><svg class="ic"><use href="#i-music"/></svg><div class="nm">음악</div></div>
       <div class="wopt" onclick="addWidget('calendar')"><svg class="ic"><use href="#i-cal"/></svg><div class="nm">달력</div></div>
       <div class="wopt" onclick="addWidget('links')"><svg class="ic"><use href="#i-link"/></svg><div class="nm">링크</div></div>
     </div>
@@ -1044,19 +1014,6 @@ function updScale(w){
     if(hl)hl.style.display=oh<150?'none':''
     if(dt)dt.style.display=oh<180?'none':'flex'
   }
-  if(type==='music'){
-    const al=w.querySelector('.music-album'),th=w.querySelector('.music-thumb')
-    const ti=w.querySelector('.music-title'),ar=w.querySelector('.music-artist')
-    const tm=w.querySelector('.music-times'),bs=w.querySelectorAll('.cbtn')
-    if(al)al.classList.toggle('show',ow>260&&oh>260)
-    const sz=S?24:L?40:32
-    if(th){th.style.width=sz+'px';th.style.height=sz+'px';th.style.fontSize=(sz*.5)+'px'}
-    if(ti)ti.style.fontSize=S?'12.5px':L?'16px':'14px'
-    if(ar)ar.style.fontSize=S?'11.5px':L?'14px':'12.5px'
-    if(tm)tm.style.display=oh<130?'none':''
-    const b1=S?22:L?34:28,b2=S?26:L?40:32
-    bs.forEach(b=>{const p=b.classList.contains('play');b.style.width=(p?b2:b1)+'px';b.style.height=(p?b2:b1)+'px';b.style.fontSize=S?'11px':L?'16px':'13px'})
-  }
   if(type==='calendar'){
     const cs=w.querySelectorAll('.cal-cell,.cal-day')
     const sz=Math.max(14,Math.min(36,Math.floor((ow-32)/7))),rh=Math.max(16,Math.min(40,Math.floor((oh-80)/8)))
@@ -1078,8 +1035,7 @@ function makeDrag(w){
     if(e.target.closest('.rh')||e.target.getAttribute('contenteditable')==='true'||
        e.target.closest('.lki')||e.target.closest('.ni')||e.target.closest('.ri')||
        e.target.closest('.sti')||e.target.closest('.cal-cell')||e.target.closest('.cal-dcbtn')||
-       e.target.classList.contains('tc')||e.target.classList.contains('music-prog')||
-       e.target.classList.contains('mf')||e.target.classList.contains('hchk')||
+       e.target.classList.contains('tc')||e.target.classList.contains('hchk')||
        e.target.classList.contains('tdisp')||e.target.classList.contains('vol-icon'))return
     if(e.button===2)return
     drag=true;sx=e.clientX;sy=e.clientY
@@ -1113,8 +1069,6 @@ function saveCalData(){localStorage.setItem('wcw-cal',JSON.stringify(calData))}
 
 const TPL={
 clock:'<div class="wl">'+icHTML('i-clock')+'시계</div><div class="wc" style="justify-content:center"><div class="clock-digital"><div class="clock-time" style="font-size:29px">00:00:00</div><div class="clock-date"></div></div><div class="analog-wrap"><canvas class="ac" width="160" height="160"></canvas></div></div><div class="rh"></div>',
-
-music:'<div class="wl">'+icHTML('i-music')+'음악<span class="npb">LIVE</span></div><div class="wc"><div class="music-album">'+icHTML('i-music')+'</div><div class="music-row"><div class="music-thumb" style="width:32px;height:32px">'+icHTML('i-music')+'</div><div style="min-width:0;flex:1"><div class="music-title" style="font-size:14px">재생 없음</div><div class="music-artist" style="font-size:12.5px">음악을 틀어보세요</div></div></div><div class="music-prog"><div class="mf" style="width:0%"></div></div><div class="music-times"><span class="mc">0:00</span><span class="mto">0:00</span></div><div class="music-ctrls"><button class="mbtn mprev" style="width:28px;height:28px">'+icHTML('i-prev')+'</button><button class="mbtn play mplay" style="width:32px;height:32px">'+icHTML('i-play')+'</button><button class="mbtn mnext" style="width:28px;height:28px">'+icHTML('i-next')+'</button></div></div><div class="rh"></div>',
 
 calendar:'<div class="cal-hdr"><button class="cal-nav cal-prev">'+icHTML('i-left')+'</button><span class="cal-mo"></span><button class="cal-nav cal-next">'+icHTML('i-right')+'</button></div><div class="cal-grid"></div><div class="cal-dmemo"><div class="cal-dmemo-title"></div><textarea class="cal-dmemo-text" placeholder="이 날 메모"></textarea><div class="cal-dcols"></div></div><div class="rh"></div>',
 
@@ -1187,7 +1141,7 @@ function addWidget(type,left,top,width,height,fixedId,fixedZ){
   d.addEventListener('mouseenter',()=>sm(false))
   d.addEventListener('mouseleave',()=>sm(true))
   if(settings&&settings.locked){const h=d.querySelector('.rh');if(h)h.style.display='none'}
-  const F={clock:initClock,music:initMusic,calendar:initCalendar,
+  const F={clock:initClock,calendar:initCalendar,
     todo:initTodo,memo:initMemo,habit:initHabit,counter:initCounter,
     news:initNews,exchange:initExchange,stock:initStock,links:initLinks,
     timer:initTimer,pomodoro:initPomodoro,calc:initCalc,convert:initConvert,
@@ -1246,74 +1200,6 @@ function initClock(w){
 
 
 
-
-function initMusic(w){
-  let lp=0,ld=0,pl=false,tk=null,lt=''
-  const g=s=>w.querySelector(s)
-  function ft(s){return Math.floor(s/60)+':'+String(Math.floor(s)%60).padStart(2,'0')}
-  function startT(){
-    if(tk)clearInterval(tk)
-    tk=setInterval(()=>{
-      if(!pl||ld<=0)return
-      lp=Math.min(lp+1,ld)
-      if(g('.mf'))g('.mf').style.width=Math.round(lp/ld*100)+'%'
-      if(g('.mc'))g('.mc').textContent=ft(lp)
-    },1000)
-  }
-  w._upd=d=>{
-    if(!d||d.status==='none'||!d.title){
-      if(g('.music-title'))g('.music-title').textContent='재생 없음'
-      if(g('.music-artist'))g('.music-artist').textContent='음악을 틀어봐'
-      const b=g('.npb');if(b){b.textContent='● 없음';b.style.color='var(--sc)'}
-      if(g('.mf'))g('.mf').style.width='0%'
-      if(g('.mc'))g('.mc').textContent='0:00'
-      if(g('.mto'))g('.mto').textContent='0:00'
-      if(g('.music-album'))g('.music-album').innerHTML=icHTML('i-music')
-      if(g('.music-thumb'))g('.music-thumb').innerHTML=icHTML('i-music')
-      pl=false;lt='';return
-    }
-    if(g('.music-title'))g('.music-title').textContent=d.title
-    if(g('.music-artist'))g('.music-artist').textContent=d.artist||''
-    pl=d.status==='Playing'
-    if(g('.mplay'))g('.mplay').innerHTML=icHTML(pl?'i-pause':'i-play')
-    const b=g('.npb');if(b){b.textContent='● 실시간';b.style.color='var(--ac)'}
-    if(d.hasThumbnail&&d.title!==lt){
-      lt=d.title
-      const t=(d.thumbPath||'')+'?t='+Date.now()
-      const mk=()=>{const i=document.createElement('img');i.src=t;i.style.cssText='width:100%;height:100%;object-fit:cover';i.onerror=function(){this.parentElement.innerHTML=icHTML('i-music')};return i}
-      if(g('.music-album')){g('.music-album').innerHTML='';g('.music-album').appendChild(mk())}
-      if(g('.music-thumb')){g('.music-thumb').innerHTML='';g('.music-thumb').appendChild(mk())}
-    }else if(!d.hasThumbnail){
-      if(g('.music-album'))g('.music-album').innerHTML=icHTML('i-music')
-      if(g('.music-thumb'))g('.music-thumb').innerHTML=icHTML('i-music')
-      lt=''
-    }
-    if(d.duration>0){
-      ld=d.duration
-      if(d.position>0)lp=d.position
-      if(g('.mf')){g('.mf').style.transition='none';g('.mf').style.width=Math.round(lp/ld*100)+'%'}
-      if(g('.mc'))g('.mc').textContent=ft(lp)
-      if(g('.mto'))g('.mto').textContent=ft(ld)
-    }
-    if(pl)startT();else if(tk)clearInterval(tk)
-    updScale(w)
-  }
-  g('.mplay').addEventListener('click',e=>{e.stopPropagation();ipcRenderer.send('media-control','play-pause')})
-  g('.mnext').addEventListener('click',e=>{e.stopPropagation();ipcRenderer.send('media-control','next')})
-  g('.mprev').addEventListener('click',e=>{e.stopPropagation();ipcRenderer.send('media-control','prev')})
-  const pb=g('.music-prog')
-  let db=false
-  function seek(e){
-    if(ld<=0)return
-    const r=pb.getBoundingClientRect(),p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))
-    if(g('.mf'))g('.mf').style.width=Math.round(p*100)+'%'
-    if(g('.mc'))g('.mc').textContent=ft(Math.round(p*ld))
-    return Math.round(p*ld)
-  }
-  pb.addEventListener('mousedown',e=>{db=true;e.stopPropagation();seek(e)})
-  document.addEventListener('mousemove',e=>{if(db)seek(e)})
-  document.addEventListener('mouseup',e=>{if(!db)return;db=false;const s=seek(e);if(s!==undefined){lp=s;ipcRenderer.send('media-control','seek',s)}})
-}
 
 function initTodo(w){
   const K='wcw-todo-'+w.id
@@ -2803,8 +2689,6 @@ function initSports(w){
 
 
 
-ipcRenderer.on('media-update',(e,d)=>document.querySelectorAll('.widget[data-type="music"]').forEach(w=>{if(w._upd)w._upd(d)}))
-
 let saved=null
 try{saved=localStorage.getItem('wcw')}catch(e){}
 let restored=false
@@ -2819,7 +2703,6 @@ if(saved){
 }
 if(!restored){
   addWidget('clock','24px','64px','190px','86px')
-  addWidget('music','24px','166px','230px','210px')
   addWidget('todo','272px','64px','214px','218px')
   addWidget('news','504px','64px','250px','280px')
   addWidget('memo','272px','298px','214px','150px')
