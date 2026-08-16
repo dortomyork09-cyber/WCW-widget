@@ -36,10 +36,18 @@ function createWindow() {
   })
 
   ipcMain.on('set-ignore-mouse', (e, ignore) => {
-    if (win && !win.isDestroyed()) {
-      win.setIgnoreMouseEvents(ignore, {
-        forward: true
-      })
+    try {
+      if (win && !win.isDestroyed()) {
+        win.setIgnoreMouseEvents(ignore, {
+          forward: true
+        })
+      }
+    } catch (err) {
+      // 창이 이미 닫혔거나 일시적인 OS 오류인 경우 무시
+    } finally {
+      // sendSync로 호출된 경우 렌더러가 응답을 기다리므로
+      // 반드시 returnValue를 채워줘야 함 (안 그러면 렌더러가 멈춤)
+      e.returnValue = true
     }
   })
 
@@ -636,26 +644,37 @@ function createWindow() {
   ipcMain.handle(
     'get-autostart',
     async () => {
-
-      return app
-        .getLoginItemSettings()
-        .openAtLogin
+      try {
+        return app
+          .getLoginItemSettings()
+          .openAtLogin
+      } catch (err) {
+        return false
+      }
     }
   )
 
   ipcMain.handle(
     'set-autostart',
     async (event, enabled) => {
+      try {
+        app.setLoginItemSettings({
+          openAtLogin: !!enabled,
+          path: process.execPath,
+          args: []
+        })
+      } catch (err) {
+        // 일부 환경(권한 제한 등)에서 등록 실패 가능 - 무시하고
+        // 실제 반영된 상태를 그대로 반환해 UI가 항상 실제 상태와 일치하게 함
+      }
 
-      app.setLoginItemSettings({
-        openAtLogin: enabled,
-        path: process.execPath,
-        args: []
-      })
-
-      return app
-        .getLoginItemSettings()
-        .openAtLogin
+      try {
+        return app
+          .getLoginItemSettings()
+          .openAtLogin
+      } catch (err) {
+        return false
+      }
     }
   )
 

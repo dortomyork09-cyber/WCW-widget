@@ -159,7 +159,7 @@ body.theme-light .btn,body.theme-ice .btn{background:#ffffffaa}
 .set-row:last-child{border:none;padding-bottom:0}
 .set-l{font-size:12.5px;font-weight:500;color:var(--wc)}
 .set-s{font-size:10px;color:var(--sc);margin-top:2px;opacity:.75}
-.tog{position:relative;width:36px;height:19px;background:var(--bg);border:1px solid var(--ibr);border-radius:10px;cursor:pointer;transition:all .2s;flex-shrink:0}
+.tog{-webkit-appearance:none;appearance:none;padding:0;margin:0;font:inherit;outline:none;position:relative;width:36px;height:19px;background:var(--bg);border:1px solid var(--ibr);border-radius:10px;cursor:pointer;transition:all .2s;flex-shrink:0}
 .tog.on{background:var(--c3);border-color:var(--c3)}
 .tog::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .2s}
 .tog.on::after{transform:translateX(17px)}
@@ -705,11 +705,11 @@ body.theme-light .wopt,body.theme-ice .wopt{background:#ffffff80}
   </div>
   <div class="set-row">
     <div><div class="set-l">자동 실행</div><div class="set-s">컴퓨터 켤 때 함께 시작</div></div>
-    <div class="tog" id="autostart-toggle"></div>
+    <button type="button" class="tog" id="autostart-toggle"></button>
   </div>
   <div class="set-row">
     <div><div class="set-l">배치 잠금</div><div class="set-s">위치와 크기 고정</div></div>
-    <div class="tog" id="lock-toggle"></div>
+    <button type="button" class="tog" id="lock-toggle"></button>
   </div>
   <div class="set-row">
     <div><div class="set-l">초기화</div><div class="set-s">모든 위젯과 기록 삭제</div></div>
@@ -809,7 +809,14 @@ function svgIc(id,cls){
 }
 function icHTML(id){return '<svg class="ic"><use href="#'+id+'"/></svg>'}
 
-function sm(v){ipcRenderer.send('set-ignore-mouse',v)}
+function sm(v){
+  if(v===false){
+    try{ipcRenderer.sendSync('set-ignore-mouse',false)}
+    catch(err){ipcRenderer.send('set-ignore-mouse',false)}
+  }else{
+    ipcRenderer.send('set-ignore-mouse',true)
+  }
+}
 function rm(el){if(!el)return;el.addEventListener('mouseenter',()=>sm(false));el.addEventListener('mouseleave',()=>sm(true))}
 document.querySelectorAll('.topbar,#modal,#ctx-menu,#cpick,#theme-panel,#settings-panel').forEach(rm)
 
@@ -910,8 +917,11 @@ if(opS){opS.value=settings.opacity;opS.addEventListener('input',e=>applyOpacity(
 const asT=document.getElementById('autostart-toggle')
 if(asT){
   ipcRenderer.invoke('get-autostart').then(on=>{settings.autostart=on;asT.classList.toggle('on',on)}).catch(()=>{})
+  asT.addEventListener('mouseenter',()=>sm(false))
+  asT.addEventListener('mousedown',()=>sm(false))
   asT.addEventListener('click',async e=>{
     e.stopPropagation()
+    sm(false)
     try{const r=await ipcRenderer.invoke('set-autostart',!settings.autostart);settings.autostart=r;asT.classList.toggle('on',r);saveSettings()}catch(err){}
   })
 }
@@ -919,8 +929,11 @@ if(asT){
 const lkT=document.getElementById('lock-toggle')
 if(lkT){
   lkT.classList.toggle('on',settings.locked)
+  lkT.addEventListener('mouseenter',()=>sm(false))
+  lkT.addEventListener('mousedown',()=>sm(false))
   lkT.addEventListener('click',e=>{
     e.stopPropagation()
+    sm(false)
     settings.locked=!settings.locked
     lkT.classList.toggle('on',settings.locked)
     document.querySelectorAll('.rh').forEach(h=>h.style.display=settings.locked?'none':'')
