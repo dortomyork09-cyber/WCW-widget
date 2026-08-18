@@ -1,9 +1,60 @@
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu } = require('electron')
 const path = require('path')
 const https = require('https')
+const fs = require('fs')
 
 let win = null
 let tray = null
+
+// ==========================================
+// 에러 로그
+// ==========================================
+// 앱이 죽거나 예상 못한 에러가 나면 로그 파일에 남긴다.
+// 로그 남기는 과정 자체에서 에러가 나도 앱은 계속 돌아가야 하므로
+// 이 파일 안의 모든 동작은 try/catch로 감싼다.
+
+function getLogPath() {
+  try {
+    const logDir = path.join(app.getPath('userData'), 'logs')
+
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true })
+    }
+
+    return path.join(logDir, 'error.log')
+  } catch (e) {
+    return null
+  }
+}
+
+function logError(context, err) {
+  try {
+    const logPath = getLogPath()
+    if (!logPath) return
+
+    const time = new Date().toISOString()
+    const message = err && err.stack ? err.stack : String(err)
+    const line = `[${time}] [${context}] ${message}\n`
+
+    fs.appendFileSync(logPath, line)
+
+    // 로그 파일이 너무 커지면 잘라낸다 (1MB 넘으면 초기화)
+    const stat = fs.statSync(logPath)
+    if (stat.size > 1024 * 1024) {
+      fs.writeFileSync(logPath, line)
+    }
+  } catch (e) {
+    // 로그 자체가 실패해도 무시 — 앱 동작에 영향 주면 안 됨
+  }
+}
+
+process.on('uncaughtException', (err) => {
+  logError('uncaughtException', err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  logError('unhandledRejection', reason)
+})
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
@@ -687,6 +738,14 @@ function createWindow() {
 app.whenReady().then(() => {
 
   createWindow()
+
+  // 렌더러(화면) 프로세스가 죽으면 왜 죽었는지 로그로 남긴다
+  app.on('render-process-gone', (event, webContents, details) => {
+    logError(
+      'render-process-gone',
+      new Error(`reason: ${details.reason}, exitCode: ${details.exitCode}`)
+    )
+  })
 
   try {
 
