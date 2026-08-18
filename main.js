@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu } = require('electron')
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, dialog, shell } = require('electron')
 const path = require('path')
 const https = require('https')
 const fs = require('fs')
@@ -55,6 +55,100 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   logError('unhandledRejection', reason)
 })
+
+// ==========================================
+// 새 버전 확인 (가벼운 버전 체크만, 자동 다운로드/교체는 안 함)
+// ==========================================
+// portable exe라 electron-updater식 완전 자동 업데이트는 안전하게 지원되지 않아서
+// 대신 깃허브 최신 릴리즈랑 버전만 비교해서 알림창만 띄워준다.
+
+function isNewerVersion(latest, current) {
+  try {
+    const l = String(latest).split('.').map(n => parseInt(n, 10) || 0)
+    const c = String(current).split('.').map(n => parseInt(n, 10) || 0)
+
+    for (let i = 0; i < Math.max(l.length, c.length); i++) {
+      const a = l[i] || 0
+      const b = c[i] || 0
+      if (a > b) return true
+      if (a < b) return false
+    }
+
+    return false
+  } catch (e) {
+    return false
+  }
+}
+
+function checkForUpdate() {
+  try {
+    const options = {
+      headers: {
+        'User-Agent': 'WCW-App'
+      },
+      timeout: 8000
+    }
+
+    const req = https.get(
+      'https://api.github.com/repos/dortomyork09-cyber/WCW-widget/releases/latest',
+      options,
+      res => {
+        let data = ''
+
+        res.on('data', chunk => {
+          data += chunk
+        })
+
+        res.on('end', () => {
+          try {
+            if (res.statusCode !== 200) return
+
+            const json = JSON.parse(data)
+            const latestTag = json.tag_name
+            if (!latestTag) return
+
+            const latestVersion = String(latestTag).replace(/^v/i, '')
+            const currentVersion = app.getVersion()
+
+            if (isNewerVersion(latestVersion, currentVersion)) {
+              const releaseUrl =
+                json.html_url ||
+                'https://github.com/dortomyork09-cyber/WCW-widget/releases/latest'
+
+              dialog
+                .showMessageBox({
+                  type: 'info',
+                  title: 'WCW 업데이트 알림',
+                  message: `새 버전(${latestVersion})이 나왔어요.\n지금 버전은 ${currentVersion}입니다.`,
+                  buttons: ['다운로드 페이지 열기', '나중에'],
+                  defaultId: 0,
+                  cancelId: 1
+                })
+                .then(result => {
+                  if (result.response === 0) {
+                    shell.openExternal(releaseUrl)
+                  }
+                })
+                .catch(e => logError('update-dialog', e))
+            }
+          } catch (e) {
+            logError('update-check-parse', e)
+          }
+        })
+      }
+    )
+
+    req.on('error', e => {
+      logError('update-check-request', e)
+    })
+
+    req.on('timeout', () => {
+      req.destroy()
+    })
+  } catch (e) {
+    logError('update-check', e)
+  }
+}
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
@@ -738,6 +832,11 @@ function createWindow() {
 app.whenReady().then(() => {
 
   createWindow()
+
+  // 시작하고 3초 후에 새 버전 있는지 확인 (부팅 직후 부하 안 주려고 살짝 지연)
+  setTimeout(() => {
+    checkForUpdate()
+  }, 3000)
 
   // 렌더러(화면) 프로세스가 죽으면 왜 죽었는지 로그로 남긴다
   app.on('render-process-gone', (event, webContents, details) => {
