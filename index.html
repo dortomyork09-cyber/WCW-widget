@@ -772,6 +772,27 @@ body.theme-light .wopt,body.theme-ice .wopt{background:#ffffff80}
 <script>
 
 const {ipcRenderer,shell,clipboard}=require('electron')
+
+// ==========================================
+// 화면(렌더러) 쪽 에러도 로그 파일에 남기기
+// ==========================================
+// main.js에는 이미 uncaughtException 등을 AppData/logs/error.log에 남기는 로직이
+// 있는데, 그건 메인 프로세스(main.js) 쪽 에러만 잡는다. 실제로 "버튼 눌러도 반응이
+// 없다" 같은 문제는 대부분 이 화면(index.html) 쪽 자바스크립트에서 나는 에러라서
+// 여기서도 잡아서 같은 로그 파일에 남기게 한다. 이렇게 해두면 다음에 문제가 생겼을 때
+// 추측하지 않고 로그 파일만 보고 바로 원인을 알 수 있다.
+window.addEventListener('error',e=>{
+  try{
+    ipcRenderer.send('renderer-error','error: '+(e.message||'')+' @ '+(e.filename||'')+':'+(e.lineno||'')+':'+(e.colno||'')+'\n'+(e.error&&e.error.stack?e.error.stack:''))
+  }catch(err){}
+})
+window.addEventListener('unhandledrejection',e=>{
+  try{
+    const r=e.reason
+    ipcRenderer.send('renderer-error','unhandledrejection: '+(r&&r.stack?r.stack:String(r)))
+  }catch(err){}
+})
+
 let wCount=0,ctxW=null
 const COLORS=['#dbeafe','#bfdbfe','#93c5fd','#60a5fa','#3b82f6','#2563eb','#1d4ed8','#1e40af','#4ade80','#f87171']
 
@@ -845,7 +866,7 @@ THEMES.forEach(t=>{
 
 const SET_KEY='wcw-settings'
 let settings=JSON.parse(localStorage.getItem(SET_KEY)||'{"opacity":88,"autostart":false,"locked":false}')
-function saveSettings(){localStorage.setItem(SET_KEY,JSON.stringify(settings))}
+function saveSettings(){if(skipAutoSave)return;localStorage.setItem(SET_KEY,JSON.stringify(settings))}
 
 function applyOpacity(v){
   settings.opacity=v
@@ -946,6 +967,11 @@ if(rsB){
   rsB.addEventListener('click',e=>{
     e.stopPropagation()
     if(confirm('모든 위젯과 저장된 데이터가 삭제됩니다. 계속할까요?')){
+      // 진짜 원인이었던 부분: skipAutoSave를 먼저 켜서, location.reload()가
+      // beforeunload를 발생시킬 때 save()가 화면에 아직 떠있는 위젯들을
+      // localStorage에 다시 저장해버리는 걸 막는다. 이걸 안 하면 위젯 내용만
+      // 비워지고 위젯 박스 자체는 재시작 후에도 그대로 남아있게 된다.
+      skipAutoSave=true
       localStorage.clear()
       location.reload()
     }
@@ -1069,7 +1095,15 @@ function makeResize(w){
   document.addEventListener('mouseup',()=>{if(rz){rz=false;save()}})
 }
 
+// 초기화 버튼을 누르면 이 플래그를 켜서, 화면이 새로고침되기 직전에 자동으로 도는
+// "종료 전 저장"이 방금 지운 위젯 목록을 다시 덮어쓰지 못하게 막는다.
+// (이게 없으면 초기화 버튼을 눌러도 위젯 내용만 비워지고 위젯 박스 자체는 그대로
+// 남아있는 것처럼 보이는 버그가 있었음 — beforeunload의 save()가 화면에 아직 남아있는
+// 위젯들을 다시 저장해버렸기 때문.)
+let skipAutoSave=false
+
 function save(){
+  if(skipAutoSave)return
   const d=[]
   document.querySelectorAll('.widget').forEach(w=>d.push({id:w.id,type:w.dataset.type,left:w.style.left,top:w.style.top,width:w.style.width,height:w.style.height,z:parseInt(w.style.zIndex)||1}))
   localStorage.setItem('wcw',JSON.stringify(d))
@@ -1130,6 +1164,15 @@ clipboard:'<div class="wl">'+icHTML('i-clipboard')+'클립보드<button class="c
 launcher:'<div class="wl">'+icHTML('i-launch')+'바로가기</div><div class="launch-list"></div><input class="lk-field launch-path" placeholder="경로 붙여넣기 또는 파일을 여기로 끌어오기"><div class="launch-row2"><input class="lk-field launch-name" placeholder="이름(선택)"><button class="lk-addbtn launch-addbtn">'+icHTML('i-plus')+'</button></div><div class="launch-msg"></div><div class="rh"></div>',
 }
 
+// 위젯을 새로 추가할 때(모달에서 클릭) width/height를 안 넘기면 내용에 맞춰
+// 무한정 커지는 위젯들이 있다 (특히 스포츠는 경기 목록이 많으면 세로로 계속 늘어나서
+// 화면 위로 넘치거나 다른 위젯과 겹쳐 클릭이 막히는 문제가 있었음).
+// 그런 위젯들은 여기에 기본 크기를 지정해서, 넘치는 내용은 위젯 안에서
+// 스크롤(.sp-list 등에 이미 걸려있는 overflow-y:auto)되게 한다.
+const DEFAULT_SIZE={
+  sports:{width:'250px',height:'320px'}
+}
+
 function addWidget(type,left,top,width,height,fixedId,fixedZ){
   wCount++
   const id=fixedId||('w'+Date.now()+'_'+wCount)
@@ -1137,8 +1180,11 @@ function addWidget(type,left,top,width,height,fixedId,fixedZ){
   const d=document.createElement('div')
   d.className='widget widget-enter';d.id=id;d.dataset.type=type
   d.style.left=x;d.style.top=y
+  const def=DEFAULT_SIZE[type]
   if(width)d.style.width=width
+  else if(def)d.style.width=def.width
   if(height)d.style.height=height
+  else if(def)d.style.height=def.height
   d.innerHTML=TPL[type]||''
   document.getElementById('wcon').appendChild(d)
   // 저장돼있던 z-index(마지막으로 앞에 있던 순서)가 있으면 그대로 복원하고,
@@ -2708,18 +2754,19 @@ let restored=false
 if(saved){
   try{
     const arr=JSON.parse(saved)
-    if(Array.isArray(arr)&&arr.length>0){
+    if(Array.isArray(arr)){
+      // 배열이 비어있어도(예: 방금 초기화 버튼을 눌러서 위젯을 다 지운 경우) 이건
+      // "저장된 상태가 빈 상태"인 거지 "저장된 적이 없는 첫 실행"이 아니다.
+      // 그래서 length 조건 없이 배열이기만 하면 복원된 것으로 보고, 기본 위젯을
+      // 다시 깔지 않는다.
       arr.forEach(x=>{if(x&&x.type&&TPL[x.type])addWidget(x.type,x.left,x.top,x.width,x.height,x.id,x.z)})
       restored=true
     }
   }catch(e){localStorage.removeItem('wcw')}
 }
-if(!restored){
-  addWidget('clock','24px','64px','190px','86px')
-  addWidget('todo','272px','64px','214px','218px')
-  addWidget('news','504px','64px','250px','280px')
-  addWidget('memo','272px','298px','214px','150px')
-}
+// 첫 실행이든 초기화 버튼을 누른 뒤든, 항상 완전히 빈 바탕화면으로 시작한다.
+// (예전엔 저장된 위젯이 없으면 시계/할일/뉴스/메모 4개를 자동으로 깔아줬는데,
+// 그러면 초기화를 눌러도 위젯이 진짜로 다 사라지지 않는 것처럼 보여서 없앴다.)
 setTimeout(()=>{
   applyOpacity(settings.opacity)
   if(settings.locked)document.querySelectorAll('.rh').forEach(h=>h.style.display='none')

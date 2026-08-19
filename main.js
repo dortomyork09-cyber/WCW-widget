@@ -196,6 +196,12 @@ function createWindow() {
     }
   })
 
+  // 화면(index.html) 쪽 자바스크립트 에러도 같은 로그 파일에 남긴다.
+  // "버튼을 눌러도 반응이 없다" 류의 문제는 대부분 여기서 잡힌다.
+  ipcMain.on('renderer-error', (e, message) => {
+    logError('renderer', new Error(message))
+  })
+
   // ==========================================
   // 뉴스 RSS
   // ==========================================
