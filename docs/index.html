@@ -9,7 +9,7 @@
 <meta property="og:site_name" content="WCW-widget">
 <meta property="og:title" content="WCW-widget">
 <meta property="og:image" content="icon.png">
-<meta name="description" content="무료 오픈소스 데스크톱 위젯 앱 WCW. 시계, 할일, 메모, 뉴스, 환율, 주식, 스포츠 등 24개 이상의 위젯을 바탕화면에 자유롭게 배치하세요.">
+<meta name="description" content="무료 오픈소스 데스크톱 위젯 앱 WCW. 시계, 할일, 메모, 뉴스, 환율, 주식, 스포츠, 화면 캡처/녹화 등 25개 이상의 위젯을 바탕화면에 자유롭게 배치하세요.">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -273,7 +273,7 @@ footer .fl{display:flex;justify-content:center;gap:18px;margin-bottom:10px}
       </div>
       <div class="bcard">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01"/></svg>도구</h3>
-        <ul><li>타이머 · 뽀모도로</li><li>계산기 · 단위변환</li><li>D-day · 번역기</li><li>그래프 · 바로가기</li></ul>
+        <ul><li>타이머 · 뽀모도로</li><li>계산기 · 단위변환</li><li>D-day · 번역기</li><li>그래프 · 바로가기</li><li>화면 캡처 · 녹화</li></ul>
       </div>
     </div>
 
@@ -402,7 +402,7 @@ function wireCard(card){
 }
 document.querySelectorAll('[data-drag]').forEach(wireCard)
 
-// 실제 앱의 "위젯 추가" 모달과 똑같은 구성 — 카테고리별로 24개 위젯을 그대로 보여준다.
+// 실제 앱의 "위젯 추가" 모달과 똑같은 구성 — 카테고리별로 25개 위젯을 그대로 보여준다.
 // 클릭하면 실제 설치하듯이 모달이 닫히고 그 위젯이 바탕화면(데모 박스)에 나타난다.
 const WCLOCK='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>'
 const WIDGET_CATS=[
@@ -433,7 +433,8 @@ const WIDGET_CATS=[
     {id:'translate',lbl:'번역기',ic:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18 14 14 0 010-18z"/>',body:'<div class="small" style="font-size:12px">Hello → 안녕</div>'},
     {id:'colorpick',lbl:'색상',ic:'<path d="M12 2.5l5.5 6.5a7.5 7.5 0 11-11 0z"/>',body:'<div style="width:100%;height:18px;border-radius:5px;background:#3B82F6;margin-bottom:4px"></div><div class="small" style="font-size:11px">#3B82F6</div>'},
     {id:'chart',lbl:'그래프',ic:'<path d="M4 20V11M10 20V4M16 20V14M22 20H2"/>',body:'<div class="small" style="font-size:12px">📊 이번 주 기록</div>'},
-    {id:'launcher',lbl:'바로가기',ic:'<path d="M14 4h6v6M20 4l-9 9M19 13v5a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5"/>',body:'<div class="small" style="font-size:12px">자주 쓰는 프로그램</div>'}
+    {id:'launcher',lbl:'바로가기',ic:'<path d="M14 4h6v6M20 4l-9 9M19 13v5a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5"/>',body:'<div class="small" style="font-size:12px">자주 쓰는 프로그램</div>'},
+    {id:'screencap',lbl:'캡처',ic:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="4"/>',body:'<div class="small" style="font-size:12px">📸 스크린샷 · 녹화</div>'}
   ]},
   {name:'재미',items:[
     {id:'quote',lbl:'명언',ic:'<path d="M8 6c-2.5 0-4 2-4 4.5S5.5 15 8 15v3c-4 0-6-3-6-7.5S4.5 3 8 3z"/><path d="M20 6c-2.5 0-4 2-4 4.5s1.5 4.5 4 4.5v3c-4 0-6-3-6-7.5S16.5 3 20 3z"/>',body:'<div class="small" style="font-size:12px">"일단 만들어보면 알게 된다"</div>'},

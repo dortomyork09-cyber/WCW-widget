@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu, dialog, shell } = require('electron')
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, dialog, shell, desktopCapturer, clipboard } = require('electron')
 const path = require('path')
 const https = require('https')
 const fs = require('fs')
@@ -825,6 +825,143 @@ function createWindow() {
           .openAtLogin
       } catch (err) {
         return false
+      }
+    }
+  )
+
+
+
+  // ==========================================
+  // 화면 캡처 / 녹화
+  // ==========================================
+  // 스크린샷은 메인 프로세스에서 desktopCapturer로 화면 원본을 받아 PNG로 저장하고
+  // 클립보드에도 복사한다. 녹화는 브라우저 표준 MediaRecorder API가 렌더러(화면) 쪽
+  // 에서만 동작하므로, 여기서는 녹화할 화면의 소스 id만 내려주고 실제 인코딩/저장은
+  // 렌더러가 하되, 완성된 파일 저장만 이 프로세스가 담당한다(파일시스템 경로 접근은
+  // 메인 프로세스에서 하는 게 안전하고 일관적이라서).
+
+  function getMediaDir() {
+    const dir = path.join(app.getPath('pictures'), 'WCW')
+
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true })
+      }
+    } catch (e) {
+      // 폴더 생성 실패 시 기본 사진 폴더로라도 저장되도록 fallback
+      return app.getPath('pictures')
+    }
+
+    return dir
+  }
+
+  function timestampName() {
+    const d = new Date()
+    const p = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+  }
+
+  ipcMain.handle(
+    'capture-screenshot',
+    async () => {
+      try {
+        const display = screen.getPrimaryDisplay()
+        const width = Math.round(display.size.width * display.scaleFactor)
+        const height = Math.round(display.size.height * display.scaleFactor)
+
+        const sources = await desktopCapturer.getSources({
+          types: ['screen'],
+          thumbnailSize: { width, height }
+        })
+
+        if (!sources || !sources.length) {
+          return { success: false, error: '화면을 찾을 수 없어요' }
+        }
+
+        const img = sources[0].thumbnail
+        if (!img || img.isEmpty()) {
+          return { success: false, error: '캡처된 이미지가 비어있어요' }
+        }
+
+        const dir = getMediaDir()
+        const filename = `WCW_캡처_${timestampName()}.png`
+        const filePath = path.join(dir, filename)
+
+        fs.writeFileSync(filePath, img.toPNG())
+
+        try {
+          clipboard.writeImage(img)
+        } catch (e) {
+          // 클립보드 복사가 실패해도 파일 저장은 이미 됐으니 무시
+        }
+
+        return { success: true, filename, dir, path: filePath }
+      } catch (err) {
+        logError('capture-screenshot', err)
+        return { success: false, error: '스크린샷 캡처 중 오류가 발생했어요' }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'get-screen-source',
+    async () => {
+      try {
+        const display = screen.getPrimaryDisplay()
+
+        const sources = await desktopCapturer.getSources({
+          types: ['screen'],
+          thumbnailSize: { width: 1, height: 1 }
+        })
+
+        if (!sources || !sources.length) {
+          return null
+        }
+
+        return {
+          id: sources[0].id,
+          width: Math.round(display.size.width * display.scaleFactor),
+          height: Math.round(display.size.height * display.scaleFactor)
+        }
+      } catch (err) {
+        logError('get-screen-source', err)
+        return null
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'save-recording',
+    async (event, buffer) => {
+      try {
+        if (!buffer || !buffer.length) {
+          return { success: false, error: '저장할 녹화 데이터가 없어요' }
+        }
+
+        const dir = getMediaDir()
+        const filename = `WCW_녹화_${timestampName()}.webm`
+        const filePath = path.join(dir, filename)
+
+        fs.writeFileSync(filePath, buffer)
+
+        return { success: true, filename, dir, path: filePath }
+      } catch (err) {
+        logError('save-recording', err)
+        return { success: false, error: '녹화 저장 중 오류가 발생했어요' }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'open-capture-folder',
+    async () => {
+      try {
+        const dir = getMediaDir()
+        await shell.openPath(dir)
+        return { success: true }
+      } catch (err) {
+        logError('open-capture-folder', err)
+        return { success: false }
       }
     }
   )
