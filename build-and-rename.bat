@@ -21,15 +21,18 @@ echo.
 call npm run build
 if errorlevel 1 goto BuildFail
 
-if exist "dist\WCW 1.0.0.exe" goto RenameOk
+for /f "usebackq delims=" %%v in (`node -p "require('./package.json').version"`) do set VER=%%v
+if "%VER%"=="" goto NoVer
+
+if exist "dist\WCW %VER%.exe" goto RenameOk
 goto NoExe
 
 :RenameOk
-copy /Y "dist\WCW 1.0.0.exe" "dist\WCW-1.0.0.exe" >nul
+copy /Y "dist\WCW %VER%.exe" "dist\WCW-%VER%.exe" >nul
 echo.
 echo ============================================
 echo   Build complete!
-echo   dist\WCW-1.0.0.exe is ready.
+echo   dist\WCW-%VER%.exe is ready.
 echo   Upload that file to your GitHub Release.
 echo ============================================
 goto End
@@ -54,10 +57,18 @@ echo   Build failed. See the messages above.
 echo ============================================
 goto End
 
+:NoVer
+echo.
+echo ============================================
+echo   Could not read the version from package.json.
+echo   Check the dist folder manually.
+echo ============================================
+goto End
+
 :NoExe
 echo.
 echo ============================================
-echo   Build finished but dist\WCW 1.0.0.exe
+echo   Build finished but dist\WCW %VER%.exe
 echo   was not found. Please check the dist folder.
 echo ============================================
 goto End
