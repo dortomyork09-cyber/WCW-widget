@@ -24,11 +24,10 @@ if errorlevel 1 goto BuildFail
 for /f "usebackq delims=" %%v in (`node -p "require('./package.json').version"`) do set VER=%%v
 if "%VER%"=="" goto NoVer
 
-if exist "dist\WCW %VER%.exe" goto RenameOk
+if exist "dist\WCW-%VER%.exe" goto BuildOk
 goto NoExe
 
-:RenameOk
-copy /Y "dist\WCW %VER%.exe" "dist\WCW-%VER%.exe" >nul
+:BuildOk
 echo.
 echo ============================================
 echo   Build complete!
@@ -68,7 +67,7 @@ goto End
 :NoExe
 echo.
 echo ============================================
-echo   Build finished but dist\WCW %VER%.exe
+echo   Build finished but dist\WCW-%VER%.exe
 echo   was not found. Please check the dist folder.
 echo ============================================
 goto End

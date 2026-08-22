@@ -15,6 +15,7 @@
     "appId": "com.wcw.widget",
     "productName": "WCW",
     "icon": "icon.png",
+    "artifactName": "${productName}-${version}.${ext}",
     "win": {
       "target": ["portable", "nsis"],
       "icon": "icon.png"
