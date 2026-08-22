@@ -9,9 +9,10 @@
 <meta property="og:site_name" content="WCW-widget">
 <meta property="og:title" content="WCW-widget">
 <meta property="og:image" content="icon.png">
-<meta name="description" content="무료 오픈소스 데스크톱 위젯 앱 WCW. 시계, 할일, 메모, 뉴스, 환율, 주식, 스포츠, 화면 캡처/녹화 등 25개 이상의 위젯을 바탕화면에 자유롭게 배치하세요.">
+<meta name="description" content="무료 오픈소스 데스크톱 위젯 앱 WCW. 시계, 할일, 메모, 뉴스, 환율, 주식, 스포츠, 날씨, 화면 캡처/녹화 등 31개 이상의 위젯을 바탕화면에 자유롭게 배치하세요.">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap"></noscript>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#ffffff;--bg2:#f6f6f8;--ink:#101014;--sub:#6b6b76;--line:#e6e6ea;--line2:#dcdce2;
@@ -261,7 +262,7 @@ footer .fl{display:flex;justify-content:center;gap:18px;margin-bottom:10px}
       </div>
       <div class="bcard span2">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h13a2 2 0 012 2v12a2 2 0 002 2H5a1 1 0 01-1-1z"/></svg>정보</h3>
-        <ul><li>실시간 뉴스</li><li>환율 (5개 통화)</li><li>주식 — 국내외 종목 한글 검색</li><li>스포츠 실시간 스코어 (NBA, EPL, MLB 등)</li></ul>
+        <ul><li>실시간 뉴스 (RSS 커스텀 가능)</li><li>환율 (5개 통화)</li><li>주식 — 국내외 종목 한글 검색</li><li>스포츠 실시간 스코어 (NBA, EPL, MLB 등)</li><li>날씨</li></ul>
       </div>
       <div class="bcard">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>기록</h3>
@@ -273,7 +274,7 @@ footer .fl{display:flex;justify-content:center;gap:18px;margin-bottom:10px}
       </div>
       <div class="bcard">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01"/></svg>도구</h3>
-        <ul><li>타이머 · 뽀모도로</li><li>계산기 · 단위변환</li><li>D-day · 번역기</li><li>그래프 · 바로가기</li><li>화면 캡처 · 녹화</li></ul>
+        <ul><li>타이머 · 알람 · 뽀모도로</li><li>계산기 · 단위변환</li><li>D-day · 번역기</li><li>그래프 · 바로가기</li><li>화면 캡처 · 녹화</li></ul>
       </div>
     </div>
 
@@ -317,7 +318,7 @@ footer .fl{display:flex;justify-content:center;gap:18px;margin-bottom:10px}
 
 <script>
 // 마퀴
-const WIDGETS=['시계','달력','할일','메모','습관','카운터','뉴스','환율','주식','링크','타이머','뽀모도로','계산기','단위변환','D-day','명언','주사위','번역기','색상피커','그래프','스네이크','스포츠','클립보드','바로가기']
+const WIDGETS=['시계','달력','할일','메모','습관','카운터','뉴스','환율','주식','링크','타이머','뽀모도로','계산기','단위변환','D-day','명언','주사위','번역기','색상피커','그래프','스네이크','스포츠','클립보드','바로가기','게임 타이머','2048','지뢰찾기','틱택토']
 document.getElementById('marqueeTrack').innerHTML=[...WIDGETS,...WIDGETS].map(w=>'<span>'+w+'</span>').join('')
 
 // 테마 스와치
@@ -402,7 +403,7 @@ function wireCard(card){
 }
 document.querySelectorAll('[data-drag]').forEach(wireCard)
 
-// 실제 앱의 "위젯 추가" 모달과 똑같은 구성 — 카테고리별로 25개 위젯을 그대로 보여준다.
+// 실제 앱의 "위젯 추가" 모달과 똑같은 구성 — 카테고리별로 31개 위젯을 그대로 보여준다.
 // 클릭하면 실제 설치하듯이 모달이 닫히고 그 위젯이 바탕화면(데모 박스)에 나타난다.
 const WCLOCK='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>'
 const WIDGET_CATS=[
@@ -422,10 +423,12 @@ const WIDGET_CATS=[
     {id:'news',lbl:'뉴스',ic:'<path d="M4 4h13a2 2 0 012 2v12a2 2 0 002 2H5a1 1 0 01-1-1z"/><path d="M8 8h7M8 12h7M8 16h4"/>',body:'<div class="small" style="font-size:12px">오늘의 뉴스 헤드라인</div>'},
     {id:'exchange',lbl:'환율',ic:'<path d="M17 2l4 4-4 4M3 6h18M7 22l-4-4 4-4M21 18H3"/>',body:'<div class="big">1,391</div><div class="small">USD/KRW</div>'},
     {id:'stock',lbl:'주식',ic:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',body:'<div class="big">▲ 2.4%</div><div class="small">삼성전자</div>'},
-    {id:'sports',lbl:'스포츠',ic:'<path d="M7 4h10v6a5 5 0 01-10 0z"/>',body:'<div class="small" style="font-size:12px;font-weight:700">● 진행중 6 – 8</div>'}
+    {id:'sports',lbl:'스포츠',ic:'<path d="M7 4h10v6a5 5 0 01-10 0z"/>',body:'<div class="small" style="font-size:12px;font-weight:700">● 진행중 6 – 8</div>'},
+    {id:'weather',lbl:'날씨',ic:'<path d="M17.5 19H7a4 4 0 01-1-7.87A5.5 5.5 0 0116.9 9.1 4.5 4.5 0 0117.5 19z"/>',body:'<div class="big">☀️ 23°</div><div class="small">맑음 · 서울</div>'}
   ]},
   {name:'도구',items:[
     {id:'timer',lbl:'타이머',ic:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/>',body:'<div class="big">05:00</div>'},
+    {id:'alarm',lbl:'알람',ic:'<path d="M6 8a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 21a2 2 0 004 0"/>',body:'<div class="small" style="font-size:12px">⏰ 오전 7:30</div>'},
     {id:'pomodoro',lbl:'뽀모도로',ic:'<path d="M12 7c-4.5 0-8 3-8 7s3.5 7 8 7 8-3 8-7-3.5-7-8-7z"/>',body:'<div class="small" style="font-size:12px">🍅 25:00 집중</div>'},
     {id:'calc',lbl:'계산기',ic:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01"/>',body:'<div class="small" style="font-size:12px">128 + 47 = 175</div>'},
     {id:'convert',lbl:'단위변환',ic:'<path d="M16 2l6 6L8 22l-6-6z"/>',body:'<div class="small" style="font-size:12px">1km = 0.62mi</div>'},
@@ -434,12 +437,16 @@ const WIDGET_CATS=[
     {id:'colorpick',lbl:'색상',ic:'<path d="M12 2.5l5.5 6.5a7.5 7.5 0 11-11 0z"/>',body:'<div style="width:100%;height:18px;border-radius:5px;background:#3B82F6;margin-bottom:4px"></div><div class="small" style="font-size:11px">#3B82F6</div>'},
     {id:'chart',lbl:'그래프',ic:'<path d="M4 20V11M10 20V4M16 20V14M22 20H2"/>',body:'<div class="small" style="font-size:12px">📊 이번 주 기록</div>'},
     {id:'launcher',lbl:'바로가기',ic:'<path d="M14 4h6v6M20 4l-9 9M19 13v5a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5"/>',body:'<div class="small" style="font-size:12px">자주 쓰는 프로그램</div>'},
-    {id:'screencap',lbl:'캡처',ic:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="4"/>',body:'<div class="small" style="font-size:12px">📸 스크린샷 · 녹화</div>'}
+    {id:'screencap',lbl:'캡처',ic:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z"/><circle cx="12" cy="13" r="4"/>',body:'<div class="small" style="font-size:12px">📸 스크린샷 · 녹화</div>'},
+    {id:'gametimer',lbl:'게임 타이머',ic:'<rect x="2" y="7" width="20" height="11" rx="5.5"/><path d="M7 9.5v5M4.5 12h5"/><circle cx="16" cy="10.5" r="1" fill="currentColor" stroke="none"/><circle cx="18.5" cy="13" r="1" fill="currentColor" stroke="none"/>',body:'<div class="big">01:24:07</div><div class="small">게임하는 중</div>'}
   ]},
   {name:'재미',items:[
     {id:'quote',lbl:'명언',ic:'<path d="M8 6c-2.5 0-4 2-4 4.5S5.5 15 8 15v3c-4 0-6-3-6-7.5S4.5 3 8 3z"/><path d="M20 6c-2.5 0-4 2-4 4.5s1.5 4.5 4 4.5v3c-4 0-6-3-6-7.5S16.5 3 20 3z"/>',body:'<div class="small" style="font-size:12px">"일단 만들어보면 알게 된다"</div>'},
     {id:'dice',lbl:'주사위',ic:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>',body:'<div class="big">🎲 5</div>'},
-    {id:'snake',lbl:'스네이크',ic:'<path d="M4 8h6a3 3 0 010 6H8a3 3 0 000 6h9"/><circle cx="19" cy="7" r="2.5"/>',body:'<div class="small" style="font-size:12px">🐍 최고 점수 42</div>'}
+    {id:'snake',lbl:'스네이크',ic:'<path d="M4 8h6a3 3 0 010 6H8a3 3 0 000 6h9"/><circle cx="19" cy="7" r="2.5"/>',body:'<div class="small" style="font-size:12px">🐍 최고 점수 42</div>'},
+    {id:'g2048',lbl:'2048',ic:'<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',body:'<div class="big">2048</div><div class="small">방향키로 플레이</div>'},
+    {id:'minesweeper',lbl:'지뢰찾기',ic:'<circle cx="12" cy="13" r="6"/><path d="M12 3v3M12 20v1M3 13h1M20 13h1M5.5 6.5l1.4 1.4M17 6.5l-1.4 1.4"/>',body:'<div class="small" style="font-size:12px">💣 지뢰 10개 · 9×9</div>'},
+    {id:'tictactoe',lbl:'틱택토',ic:'<path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>',body:'<div class="small" style="font-size:12px">⭕❌ 같은 PC 2인용</div>'}
   ]}
 ]
 

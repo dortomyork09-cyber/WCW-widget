@@ -1,7 +1,34 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu, dialog, shell, desktopCapturer, clipboard } = require('electron')
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, dialog, shell, desktopCapturer, clipboard, Notification } = require('electron')
 const path = require('path')
 const https = require('https')
 const fs = require('fs')
+
+// electron-updater는 NSIS 설치형 빌드에서만 의미가 있고(포터블 exe는 원리상
+// 자기 자신을 자동으로 갈아끼울 수 없음), package.json에 새로 추가한
+// 의존성이라 아직 npm install을 안 했으면 require가 실패할 수 있다.
+// 그런 경우에도 앱 자체는 정상 동작해야 하므로 통째로 try/catch로 감싼다.
+let autoUpdater = null
+try {
+  autoUpdater = require('electron-updater').autoUpdater
+} catch (e) {
+  autoUpdater = null
+}
+
+// electron-builder가 포터블 exe로 실행될 때는 이 환경변수를 자동으로 심어준다.
+// 이 값이 있으면 "지금 포터블로 실행 중"이라는 뜻이라, 진짜 자동 업데이트
+// 대신 기존의 "새 버전 나왔어요" 안내 다이얼로그로 넘어간다.
+const isPortableBuild = !!process.env.PORTABLE_EXECUTABLE_DIR
+
+// ==========================================
+// 성능: GPU 셰이더 디스크 캐시 비활성화
+// ==========================================
+// 일부 윈도우 환경(특히 계정 폴더 권한이 꼬였거나 백신이 잠그는 경우)에서
+// 크로미움이 GPU 셰이더 컴파일 결과를 디스크에 캐시하려다 실패하면서
+// "Unable to create cache" 류의 로그가 반복 발생하고, 그때마다 재시도하느라
+// 초기 렌더링(창이 실제로 뜨기까지)이 느려지는 사례가 있다.
+// GPU 가속 자체(위젯의 블러 효과 등)는 그대로 쓰되, 디스크에 캐시만 안 남기게
+// 해서 이 지연 요인을 없앤다. app이 ready 되기 전에 호출해야 적용된다.
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 
 let win = null
 let tray = null
@@ -27,12 +54,22 @@ function getLogPath() {
   }
 }
 
+// toISOString()은 항상 UTC라서 로그 볼 때 실제 시각이랑 안 맞아서 헷갈림 —
+// 여기 시스템(사용자 PC)의 로컬 시간대 기준으로 찍히도록 직접 포맷한다.
+function localTimeString() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' +
+    p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' +
+    String(d.getMilliseconds()).padStart(3, '0')
+}
+
 function logError(context, err) {
   try {
     const logPath = getLogPath()
     if (!logPath) return
 
-    const time = new Date().toISOString()
+    const time = localTimeString()
     const message = err && err.stack ? err.stack : String(err)
     const line = `[${time}] [${context}] ${message}\n`
 
@@ -77,6 +114,52 @@ function isNewerVersion(latest, current) {
     return false
   } catch (e) {
     return false
+  }
+}
+
+function getVersionFilePath() {
+  try {
+    return path.join(app.getPath('userData'), 'last-version.json')
+  } catch (e) {
+    return null
+  }
+}
+
+function notifyIfJustUpdated() {
+  try {
+    const verPath = getVersionFilePath()
+    if (!verPath) return
+
+    const currentVersion = app.getVersion()
+    let lastVersion = null
+
+    if (fs.existsSync(verPath)) {
+      try {
+        const raw = fs.readFileSync(verPath, 'utf-8')
+        const parsed = JSON.parse(raw)
+        lastVersion = parsed && parsed.version ? String(parsed.version) : null
+      } catch (e) {
+        lastVersion = null
+      }
+    }
+
+    if (lastVersion && lastVersion !== currentVersion) {
+      try {
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'WCW 업데이트 완료',
+            body: `v${lastVersion} -> v${currentVersion}(으)로 업데이트됐어요.`,
+            icon: path.join(__dirname, 'icon.png')
+          }).show()
+        }
+      } catch (e) {
+        logError('notify-updated-show', e)
+      }
+    }
+
+    fs.writeFileSync(verPath, JSON.stringify({ version: currentVersion }))
+  } catch (e) {
+    logError('notify-updated', e)
   }
 }
 
@@ -150,14 +233,97 @@ function checkForUpdate() {
   }
 }
 
+// ==========================================
+// 자동 업데이트 (NSIS 설치형 빌드 전용)
+// ==========================================
+// electron-updater는 GitHub Releases에 새 버전이 올라오면 백그라운드로 내려받고,
+// 앱을 재시작(또는 종료)할 때 자동으로 설치해준다. 포터블 exe는 실행 파일
+// 하나가 그냥 통째로 도는 구조라 "실행 중인 자기 자신을 갈아끼우는" 게 원리상
+// 안 되기 때문에, 포터블 빌드에서는 이 함수가 아무것도 안 하고 기존
+// checkForUpdate()의 "새 버전 나왔어요, 다운로드 페이지 열기" 안내로 대체된다.
+function setupAutoUpdater() {
+  if (!autoUpdater || isPortableBuild) return
+
+  try {
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+
+    autoUpdater.on('update-downloaded', info => {
+      try {
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'WCW 업데이트 준비됨',
+            body: `v${info.version} 다운로드를 마쳤어요. 앱을 재시작하면 적용돼요.`,
+            icon: path.join(__dirname, 'icon.png')
+          }).show()
+        }
+      } catch (e) {
+        logError('auto-updater-notify', e)
+      }
+    })
+
+    autoUpdater.on('error', err => {
+      logError('auto-updater', err)
+    })
+
+    autoUpdater.checkForUpdatesAndNotify().catch(err => {
+      logError('auto-updater-check', err)
+    })
+  } catch (e) {
+    logError('auto-updater-setup', e)
+  }
+}
+
+// ==========================================
+// 다중 모니터 지원
+// ==========================================
+// 예전엔 getPrimaryDisplay()만 기준으로 창을 만들어서, 듀얼(또는 그 이상)
+// 모니터를 쓰는 사람은 두 번째 화면에 위젯을 못 놓는 문제가 있었다.
+// screen.getAllDisplays()로 모든 모니터를 감싸는 가상 데스크톱 전체 영역을
+// 구해서, 창을 그 영역 전체(음수 좌표를 쓰는 모니터 배치도 포함) 크기로 만든다.
+function getVirtualDesktopBounds() {
+  try {
+    const displays = screen.getAllDisplays()
+    if (!displays || !displays.length) throw new Error('no displays')
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+
+    displays.forEach(d => {
+      const b = d.bounds
+      minX = Math.min(minX, b.x)
+      minY = Math.min(minY, b.y)
+      maxX = Math.max(maxX, b.x + b.width)
+      maxY = Math.max(maxY, b.y + b.height)
+    })
+
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      throw new Error('invalid bounds')
+    }
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+  } catch (e) {
+    // 뭔가 잘못되면(디스플레이 정보를 못 읽는 등) 최소한 기본 모니터
+    // 크기로라도 창을 띄운다.
+    try {
+      const p = screen.getPrimaryDisplay()
+      return { x: 0, y: 0, width: p.size.width, height: p.size.height }
+    } catch (e2) {
+      return { x: 0, y: 0, width: 1280, height: 720 }
+    }
+  }
+}
+
 function createWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  const vb = getVirtualDesktopBounds()
 
   win = new BrowserWindow({
-    width,
-    height,
-    x: 0,
-    y: 0,
+    width: vb.width,
+    height: vb.height,
+    x: vb.x,
+    y: vb.y,
 
     frame: false,
     transparent: true,
@@ -165,6 +331,12 @@ function createWindow() {
 
     skipTaskbar: false,
     resizable: false,
+
+    // 콘텐츠가 다 그려지기 전에는 숨겨뒀다가 'ready-to-show'에서 한 번에
+    // 보여준다. 이게 없으면 창이 먼저 뜨고 그 위에 위젯들이 순간적으로
+    // 그려지는 깜빡임(흰 화면 또는 빈 화면 잔상)이 보여서 실제 로딩
+    // 시간과 별개로 "느리다"는 인상을 준다.
+    show: false,
 
     icon: path.join(__dirname, 'icon.png'),
 
@@ -176,6 +348,16 @@ function createWindow() {
 
   win.loadFile('index.html')
 
+  win.once('ready-to-show', () => {
+    if (win && !win.isDestroyed()) {
+      win.show()
+    }
+  })
+
+  // 창이 화면 전체(멀티모니터 포함)를 덮는 투명 오버레이라서, 위젯 없는
+  // 빈 영역까지 항상 클릭을 먹어버리면 다른 창/바탕화면을 아예 조작할 수
+  // 없게 된다. 그래서 기본값은 반드시 클릭 통과(ignore=true)여야 하고,
+  // 위젯/패널 위에 있을 때만 렌더러가 false로 잠깐 풀어주는 구조를 유지한다.
   win.setIgnoreMouseEvents(true, {
     forward: true
   })
@@ -202,16 +384,35 @@ function createWindow() {
     logError('renderer', new Error(message))
   })
 
+  // 트레이 아이콘에 마우스를 올렸을 때 다음 알람/타이머를 보여주기 위해,
+  // 렌더러가 주기적으로 계산해서 보내주는 문구를 그대로 트레이 툴팁에 반영한다.
+  // 트레이 자체는 이 파일 아래쪽(app.whenReady)에서 따로 만들어지므로,
+  // 여기서는 그 시점에 tray가 아직 없을 수도 있어 매번 존재 여부만 확인한다.
+  ipcMain.on('update-tray-tooltip', (e, text) => {
+    try {
+      if (tray && !tray.isDestroyed()) {
+        tray.setToolTip(
+          (typeof text === 'string' && text) ? text : 'WCW 위젯'
+        )
+      }
+    } catch (err) {}
+  })
+
   // ==========================================
   // 뉴스 RSS
   // ==========================================
 
   ipcMain.handle(
     'fetch-news',
-    async () => {
+    async (event, lang) => {
+      // lang이 'en'이면 영어권(미국) 뉴스, 그 외(기본)는 한국어 뉴스.
+      const newsUrl =
+        lang === 'en'
+          ? 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en'
+          : 'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko'
       return new Promise(resolve => {
         https.get(
-          'https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko',
+          newsUrl,
           {
             headers: {
               'User-Agent':
@@ -861,46 +1062,48 @@ function createWindow() {
     return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
   }
 
+  async function captureScreenshotToFile() {
+    try {
+      const display = screen.getPrimaryDisplay()
+      const width = Math.round(display.size.width * display.scaleFactor)
+      const height = Math.round(display.size.height * display.scaleFactor)
+
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: { width, height }
+      })
+
+      if (!sources || !sources.length) {
+        return { success: false, error: '화면을 찾을 수 없어요' }
+      }
+
+      const img = sources[0].thumbnail
+      if (!img || img.isEmpty()) {
+        return { success: false, error: '캡처된 이미지가 비어있어요' }
+      }
+
+      const dir = getMediaDir()
+      const filename = `WCW_캡처_${timestampName()}.png`
+      const filePath = path.join(dir, filename)
+
+      fs.writeFileSync(filePath, img.toPNG())
+
+      try {
+        clipboard.writeImage(img)
+      } catch (e) {
+        // 클립보드 복사가 실패해도 파일 저장은 이미 됐으니 무시
+      }
+
+      return { success: true, filename, dir, path: filePath }
+    } catch (err) {
+      logError('capture-screenshot', err)
+      return { success: false, error: '스크린샷 캡처 중 오류가 발생했어요' }
+    }
+  }
+
   ipcMain.handle(
     'capture-screenshot',
-    async () => {
-      try {
-        const display = screen.getPrimaryDisplay()
-        const width = Math.round(display.size.width * display.scaleFactor)
-        const height = Math.round(display.size.height * display.scaleFactor)
-
-        const sources = await desktopCapturer.getSources({
-          types: ['screen'],
-          thumbnailSize: { width, height }
-        })
-
-        if (!sources || !sources.length) {
-          return { success: false, error: '화면을 찾을 수 없어요' }
-        }
-
-        const img = sources[0].thumbnail
-        if (!img || img.isEmpty()) {
-          return { success: false, error: '캡처된 이미지가 비어있어요' }
-        }
-
-        const dir = getMediaDir()
-        const filename = `WCW_캡처_${timestampName()}.png`
-        const filePath = path.join(dir, filename)
-
-        fs.writeFileSync(filePath, img.toPNG())
-
-        try {
-          clipboard.writeImage(img)
-        } catch (e) {
-          // 클립보드 복사가 실패해도 파일 저장은 이미 됐으니 무시
-        }
-
-        return { success: true, filename, dir, path: filePath }
-      } catch (err) {
-        logError('capture-screenshot', err)
-        return { success: false, error: '스크린샷 캡처 중 오류가 발생했어요' }
-      }
-    }
+    async () => captureScreenshotToFile()
   )
 
   ipcMain.handle(
@@ -966,6 +1169,83 @@ function createWindow() {
     }
   )
 
+  ipcMain.handle(
+    'open-log-folder',
+    async () => {
+      try {
+        const logPath = getLogPath()
+        if (!logPath) return { success: false, error: '로그 폴더를 열 수 없어요' }
+        // 로그 파일이 있으면 탐색기에서 그 파일을 바로 선택해서 보여주고,
+        // 없으면(아직 에러가 한 번도 안 난 경우) 폴더만 열어준다.
+        if (fs.existsSync(logPath)) {
+          shell.showItemInFolder(logPath)
+        } else {
+          await shell.openPath(path.dirname(logPath))
+        }
+        return { success: true }
+      } catch (err) {
+        logError('open-log-folder', err)
+        return { success: false, error: '로그 폴더를 여는 중 오류가 발생했어요' }
+      }
+    }
+  )
+
+  // ==========================================
+  // 설정 백업 내보내기 / 가져오기
+  // 렌더러가 localStorage 전체를 JSON 문자열로 만들어서 넘겨주면
+  // 그걸 사용자가 고른 위치에 파일로 저장/읽기만 담당한다 (내용 자체는 모른다).
+  // ==========================================
+  ipcMain.handle(
+    'export-backup',
+    async (event, jsonStr) => {
+      try {
+        if (typeof jsonStr !== 'string' || !jsonStr) {
+          return { success: false, error: '내보낼 데이터가 없어요' }
+        }
+        const defaultName =
+          'wcw-backup-' +
+          new Date().toISOString().slice(0, 10) +
+          '.json'
+        const win = BrowserWindow.getAllWindows()[0]
+        const result = await dialog.showSaveDialog(win, {
+          title: 'WCW 백업 저장',
+          defaultPath: defaultName,
+          filters: [{ name: 'WCW 백업 파일', extensions: ['json'] }]
+        })
+        if (result.canceled || !result.filePath) {
+          return { success: false, canceled: true }
+        }
+        fs.writeFileSync(result.filePath, jsonStr, 'utf-8')
+        return { success: true, filePath: result.filePath }
+      } catch (err) {
+        logError('export-backup', err)
+        return { success: false, error: '백업 파일을 저장하는 중 오류가 발생했어요' }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'import-backup',
+    async () => {
+      try {
+        const win = BrowserWindow.getAllWindows()[0]
+        const result = await dialog.showOpenDialog(win, {
+          title: 'WCW 백업 불러오기',
+          properties: ['openFile'],
+          filters: [{ name: 'WCW 백업 파일', extensions: ['json'] }]
+        })
+        if (result.canceled || !result.filePaths || !result.filePaths[0]) {
+          return { success: false, canceled: true }
+        }
+        const content = fs.readFileSync(result.filePaths[0], 'utf-8')
+        return { success: true, content }
+      } catch (err) {
+        logError('import-backup', err)
+        return { success: false, error: '백업 파일을 읽는 중 오류가 발생했어요' }
+      }
+    }
+  )
+
 }
 
 // ==========================================
@@ -976,9 +1256,40 @@ app.whenReady().then(() => {
 
   createWindow()
 
-  // 시작하고 3초 후에 새 버전 있는지 확인 (부팅 직후 부하 안 주려고 살짝 지연)
+  // 모니터를 연결/해제하거나 배치·해상도를 바꾸면 위젯을 놓을 수 있는 전체
+  // 영역도 바뀌므로, 창 크기를 다시 계산해서 맞춰준다.
+  function resizeWindowForDisplays() {
+    try {
+      if (!win || win.isDestroyed()) return
+      const vb = getVirtualDesktopBounds()
+      win.setBounds(vb)
+    } catch (e) {
+      logError('resize-window-for-displays', e)
+    }
+  }
+  try {
+    screen.on('display-added', resizeWindowForDisplays)
+    screen.on('display-removed', resizeWindowForDisplays)
+    screen.on('display-metrics-changed', resizeWindowForDisplays)
+  } catch (e) {
+    logError('display-listener-register', e)
+  }
+
+  // 창이 뜨고 조금 지난 뒤, 지난 실행 때와 버전이 달라졌으면(=방금 업데이트를
+  // 끝낸 상태) 완료 알림을 띄운다.
   setTimeout(() => {
-    checkForUpdate()
+    notifyIfJustUpdated()
+  }, 2000)
+
+  // 시작하고 3초 후에 새 버전 있는지 확인 (부팅 직후 부하 안 주려고 살짝 지연).
+  // NSIS 설치형으로 실행 중이고 electron-updater가 설치돼있으면 진짜 자동
+  // 업데이트를, 아니면(포터블 exe) 기존의 "새 버전 나왔어요" 안내만 띄운다.
+  setTimeout(() => {
+    if (!isPortableBuild && autoUpdater) {
+      setupAutoUpdater()
+    } else {
+      checkForUpdate()
+    }
   }, 3000)
 
   // 렌더러(화면) 프로세스가 죽으면 왜 죽었는지 로그로 남긴다
@@ -1007,6 +1318,13 @@ app.whenReady().then(() => {
       tray =
         new Tray(iconPath)
 
+      function sendTrayAction(action) {
+        if (win && !win.isDestroyed()) {
+          win.show()
+          win.webContents.send('tray-action', action)
+        }
+      }
+
       const menu =
         Menu.buildFromTemplate([
           {
@@ -1019,6 +1337,26 @@ app.whenReady().then(() => {
                 win.show()
               }
             }
+          },
+
+          {
+            type:
+              'separator'
+          },
+
+          {
+            label: '위젯 추가...',
+            click: () => sendTrayAction('open-modal')
+          },
+
+          {
+            label: '설정 열기',
+            click: () => sendTrayAction('open-settings')
+          },
+
+          {
+            label: '배치 잠금 켜기/끄기',
+            click: () => sendTrayAction('toggle-lock')
           },
 
           {
